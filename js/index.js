@@ -1,1 +1,365 @@
-"use strict";const appPuzzle=()=>{const l=document.getElementById("app__puzzle"),e=document.getElementById("app__shuffle"),t=document.getElementById("app__counter"),a=Array.from(l.querySelectorAll(".app__puzzle--btn")),r=document.querySelector(".preloader"),n=new Array(16).fill(0).map((e,t)=>t+1),s=16,o=16,c=4;let d=!1,i=[],u=null,y=null,p=null,m=0;t.textContent=m;const f=()=>{m++,t.textContent=m},x=()=>{r.classList.contains("hide")||r.classList.add("hide")},h=e=>{var t=e.flat();for(let e=0;e<n.length;e++)if(t[e]!==n[e])return!1;return!0},v=()=>{h(i)?(m=0,l.classList.add("lock"),setTimeout(()=>l.classList.remove("won"),70)):setTimeout(()=>l.classList.add("won"),70)},g=(e,t,r)=>{e.style.transform=`translate3D(${100*t}%, ${100*r}%, 0)`},b=r=>{for(let t=0;t<r.length;t++)for(let e=0;e<r[t].length;e++){var l=r[t][e],l=a[l-1];g(l,e,t)}v()},k=(r,l)=>{for(let t=0;t<l.length;t++)for(let e=0;e<l[t].length;e++)if(l[t][e]===r)return{y:t,x:e};return null},L=(e,t)=>{var r=Math.abs(e.x-t.x),l=Math.abs(e.y-t.y);return!(1!==r&&1!==l||e.x!==t.x&&e.y!==t.y)},w=(e,t,r)=>{var l=r[e.y][e.x];r[e.y][e.x]=r[t.y][t.x],r[t.y][t.x]=l},z=({blankCoords:r,matrix:l,blockedCoords:a})=>{const n=[];for(let t=0;t<l.length;t++)for(let e=0;e<l[t].length;e++)!L({x:e,y:t},r)||a&&a.x===e&&a.y===t||n.push({x:e,y:t});return n};const _=(e,t)=>{e.y>=i.length||e.y<0||e.x>=i.length||e.x<0||(f(),w(e,t,i),b(i))};l.addEventListener("click",({target:e})=>{var t;d||(e=e.closest(".app__puzzle--btn"))&&(e=Number(e.dataset.matrixId),e=k(e,i),t=k(s,i),e=e,t=t,L(e,t)&&(f(),w(e,t,i),b(i)))}),e.addEventListener("click",()=>{d||(m=0,t.textContent=m,l.classList.remove("lock"),d=!0,y=0,clearInterval(p),l.classList.add("appShuffle"),0===y&&(p=setInterval(()=>{var e,t,r;e=i,t=k(s,e),r=(r=z({blankCoords:t,matrix:e,blockedCoords:u}))[Math.floor(Math.random()*r.length)],w(t,r,e),u=t,b(i),100<=(y+=1)&&(l.classList.remove("appShuffle"),clearInterval(p),d=!1)},70)))}),document.body.addEventListener("keydown",e=>{if(!d&&e.key.includes("Arrow")){var t=k(s,i),r={x:t.x,y:t.y},e=e.key.split("Arrow")[1].toLowerCase(),l=r,r=t;switch(e){case"up":l.y+=1;break;case"down":--l.y;break;case"left":l.x+=1;break;case"right":--l.x}_(l,r)}});if(setTimeout(x,3e3),a.length<o)throw new Error(`Должно быть ровно ${o} items in HTML`);a[o-1].style.display="none";var C=a.map(e=>Number(e.dataset.matrixId));i=(e=>{const t=[[],[],[],[]];let r=0,l=0;for(var a of e)l>=c&&(r++,l=0),t[r][l]=a,l++;return t})(C),b(i),v()};appPuzzle();
+'use strict';
+
+const appPuzzle = () => {
+  
+  // game
+  const $appNode = document.getElementById('app__puzzle');
+  const $appNodeLock = document.getElementById('app__puzzle--lock');
+  const $appShuffle = document.getElementById('app__shuffle');
+  const $appCounter = document.getElementById('app__counter');
+
+  const $appResultCount = document.getElementById('app__result--count'); 
+  const $appResultTime = document.getElementById('app__result--time'); 
+
+  const $appItemsNodes = Array.from($appNode.querySelectorAll('.app__puzzle--btn'));
+  const $appDiscription = document.querySelector('.app__discription');
+  const $appBox = document.querySelector('.app__box');
+
+  // preloader
+  const $preloader = document.querySelector('.preloader');
+
+  // time
+  const $minute = document.getElementById('minute');
+  const $second = document.getElementById('second');
+  const $millisecond = document.getElementById('millisecond');
+
+  const winFlatArr = new Array(16).fill(0).map((_item, index) => index + 1);
+
+  // variables
+  const blankNumber = 16;
+  const countItems = 16;
+  const countLine = 4;
+  const maxShuffleCount = 100;
+
+  let shuffled = false;
+  let matrix = [];
+  let blockedCoords = null;
+  let shuffleCount = null;
+  let timer = null;
+  let count = 0;
+
+  let minute = 0;
+  let second = 0;
+  let millisecond = 0;
+  let interval = null;
+
+  $appCounter.textContent = count;
+
+  /** Zero */
+  const addZero = n => n < 10 ? '0' + n : n;
+
+  /** Hide */
+  const hide = (elem, name) => elem.classList.add(name);
+
+  /** Show */
+  const show = (elem, name) => elem.classList.remove(name);
+
+  const totalCount = () => {
+    count++;
+    $appCounter.textContent = count;
+  };
+
+  const removePreloader = () => {
+    if (!$preloader.classList.contains('hide')) {
+      hide($preloader, 'hide');
+    }
+  };
+
+  const checkCountItems = () => {
+    if ($appItemsNodes.length < countItems) {
+      throw new Error(`Должно быть ровно ${countItems} items in HTML`);
+    }
+  };
+
+  const hideItemsLast = () => {
+    $appItemsNodes[countItems - 1].style.display = 'none';
+  };
+
+  const checkDatasetItems = () => $appItemsNodes.map(item => Number(item.dataset.matrixId));
+
+  /** Milliseconds */
+  const timerMilliseconds = () => {
+    if (millisecond > 99) {
+      second++;
+      $second.textContent = addZero(second);
+      millisecond = 0;
+      $millisecond.textContent = addZero(millisecond);
+    }
+    timerSeconds();
+  };
+  /** Seconds */
+  const timerSeconds = () => {
+    if (second > 59) {
+      minute++;
+      $minute.textContent = addZero(minute);
+      second = 0;
+      $second.textContent = addZero(second);
+    }
+  };
+
+  /** Timer */
+  const startTimer = () => {
+    millisecond++;
+    $millisecond.textContent = addZero(millisecond);
+    timerMilliseconds();
+  };
+
+  /** Matrix */
+  const getMatrix = arr => {
+    const matrix = [[], [], [], []];
+    let y = 0,
+        x = 0;
+
+    for (let item of arr) {
+      if (x >= countLine) {
+        y++;
+        x = 0;
+      }
+      matrix[y][x] = item;
+      x++;
+    }
+
+    return matrix;
+  };
+
+  /** Show won */
+  const isWon = matrix => {
+    const flatMatrix = matrix.flat();
+    for (let i = 0; i < winFlatArr.length; i++) {
+      if (flatMatrix[i] !== winFlatArr[i]) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const addWonClass = () => {
+    if (isWon(matrix)) {
+      clearInterval(interval);
+      $appResultCount.textContent = count;
+      $appResultTime.textContent = `${addZero(minute)}:${addZero(second)}:${addZero(millisecond)}`;
+      
+      show($appNodeLock, 'hide');
+      hide($appBox, 'hide');
+      show($appDiscription, 'hide');
+
+      setTimeout(() => show($appNode, 'won'), 70);
+    }
+    else {
+      setTimeout(() => hide($appNode, 'won'), 70);
+    }
+  };
+
+  /** Position */
+  const setNodeStyles = (node, x, y) => {
+    const shiftPs = 100;
+    node.style.transform = `translate3D(${x * shiftPs}%, ${y * shiftPs}%, 0)`;
+  };
+
+
+  const setPositionItems = matrix => {
+    for (let y = 0; y < matrix.length; y++) {
+      for (let x = 0; x < matrix[y].length; x++) {
+        const value = matrix[y][x];
+        const node = $appItemsNodes[value - 1];
+        
+        setNodeStyles(node, x, y);
+      }
+    }
+
+    addWonClass();
+  };
+
+  const findCoordinatesByNumber = (number, matrix) => {
+    for (let y = 0; y < matrix.length; y++) {
+      for (let x = 0; x < matrix[y].length; x++) {
+        if (matrix[y][x] === number) return {y, x};
+      }
+    }
+
+    return null;
+  };
+
+  const isValidForSwap = (coord01, coord02) => {
+    const diffX = Math.abs(coord01.x - coord02.x);
+    const diffY = Math.abs(coord01.y - coord02.y);
+
+    return (
+      (diffX === 1 || diffY === 1) && 
+      (coord01.x === coord02.x || coord01.y === coord02.y)
+    );
+  };
+
+  const swapItems = (coords01, coords02, matrix) => {
+    const tempCoords = matrix[coords01.y][coords01.x];
+    matrix[coords01.y][coords01.x] = matrix[coords02.y][coords02.x];
+    matrix[coords02.y][coords02.x] = tempCoords;
+  };
+
+  const getСoordinatesNumber = (btnCoords, blankCoords) => {
+    const isValid = isValidForSwap(btnCoords, blankCoords);
+  
+    if (isValid) {
+      totalCount();
+      swapItems(btnCoords, blankCoords, matrix);
+      setPositionItems(matrix);
+    }
+  };
+
+  /** Shuffle-1 or Shuffle-2  */ 
+
+  /** Shuffle-2 */
+  // const shuffleArray = arr => {
+  //   return arr
+  //     .map( value => ({ value, sort: Math.random() }))
+  //     .sort((a, b) => a.sort - b.sort)
+  //     .map(({ value }) => value);
+  // };
+
+  // const clickShuffleItems = () => {
+  //   matrix = getMatrix(shuffleArray(matrix.flat()));
+  //   setPositionItems(matrix);
+  //   addWonClass();
+  // };
+
+  /** Shuffle-2 */
+  const findValidCoords = ({ blankCoords, matrix, blockedCoords }) => {
+    const validCoords = [];
+
+    for (let y = 0; y < matrix.length; y++) {
+      for (let x = 0; x < matrix[y].length; x++) {
+        if (isValidForSwap({ x, y }, blankCoords)) {
+          if (!blockedCoords || !(blockedCoords.x === x && blockedCoords.y === y)) {
+            validCoords.push({ x, y });
+          }
+        }
+      }
+    }
+
+    return validCoords;
+  };
+
+  const randomSwap = matrix => {
+    const blankCoords = findCoordinatesByNumber(blankNumber, matrix);
+
+    const validCoords = findValidCoords({ blankCoords, matrix, blockedCoords });
+
+    const swapCoords = validCoords[
+      Math.floor(Math.random() * validCoords.length)
+    ];
+    
+    swapItems(blankCoords, swapCoords, matrix);
+    blockedCoords = blankCoords;
+  };
+
+  const clickShuffleItems = () => {
+    if (shuffled) return;
+    
+    count = 0;
+    $appCounter.textContent = count;
+
+    shuffled = true;
+    shuffleCount = 0;
+    clearInterval(timer);
+
+    if (shuffleCount === 0) {
+      timer = setInterval(() => {
+        randomSwap(matrix);
+        setPositionItems(matrix);
+
+        shuffleCount += 1;
+
+        if (shuffleCount >= maxShuffleCount) {
+          hide($appNodeLock, 'hide');
+          hide($appDiscription, 'hide');
+          show($appBox, 'hide');
+
+          clearInterval(timer);
+          clearInterval(interval);
+
+          interval = setInterval(startTimer, 10);
+          shuffled = false;
+
+        }
+      }, 20);
+    }
+  };
+
+  /** Change position by click */
+  const clickTargetItems = ({ target }) => {
+    if (shuffled) return;
+    const btnNode = target.closest('.app__puzzle--btn');
+    if (!btnNode) return;
+
+    const btnNumber = Number(btnNode.dataset.matrixId);
+
+    const btnCoords = findCoordinatesByNumber(btnNumber, matrix);
+    const blankCoords = findCoordinatesByNumber(blankNumber, matrix);
+
+    getСoordinatesNumber(btnCoords, blankCoords);
+  };
+
+  /** Change position by arrows */
+  const isValidArrow = (btnCoords, blankCoords) => {
+    if (
+      btnCoords.y >= matrix.length || btnCoords.y < 0 || 
+      btnCoords.x >= matrix.length || btnCoords.x < 0
+    ) { 
+      return; 
+    }
+
+    totalCount();
+    swapItems(btnCoords, blankCoords, matrix);
+    setPositionItems(matrix);
+  };
+
+  const shuffleItemsArrow = (direction, btnCoords, blankCoords) => {
+    switch(direction) {
+      case 'up':
+        btnCoords.y += 1;
+        break;
+      case 'down':
+        btnCoords.y -= 1;
+        break;
+      case 'left':
+        btnCoords.x += 1;
+        break;
+      case 'right':
+        btnCoords.x -= 1;
+        break;
+    }
+
+    isValidArrow(btnCoords, blankCoords);
+  };
+
+  const clickArrows = event => {
+    if (shuffled) return;
+    if (!event.key.includes('Arrow')) return;
+    const blankCoords = findCoordinatesByNumber(blankNumber, matrix);
+    const btnCoords = { x: blankCoords.x, y: blankCoords.y };
+    const direction = event.key.split('Arrow')[1].toLowerCase();
+
+    shuffleItemsArrow(direction, btnCoords, blankCoords);
+  };
+
+  /** Events */
+  $appNode.addEventListener('click', clickTargetItems);
+  $appShuffle.addEventListener('click', clickShuffleItems);
+  document.body.addEventListener('keydown', clickArrows);
+
+  /** Start */
+  const init = () => {
+    setTimeout(removePreloader, 3000);
+    checkCountItems();
+    hideItemsLast();
+    const matrixId = checkDatasetItems();
+    matrix = getMatrix(matrixId);
+    setPositionItems(matrix);
+    addWonClass();
+  };
+
+  init();
+};
+
+appPuzzle();
+
